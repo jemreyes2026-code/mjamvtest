@@ -1,38 +1,21 @@
-rules_version = '2';
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-service cloud.firestore {
-  match /databases/{database}/documents {
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCF8J3P9-dOSdemrvEmEvhjl8dum1VI1ZI",
+  authDomain: "mjamvtest.firebaseapp.com",
+  projectId: "mjamvtest",
+  storageBucket: "mjamvtest.firebasestorage.app",
+  messagingSenderId: "1097893844473",
+  appId: "1:1097893844473:web:9c79b0bf67a78b1aea9928",
+  measurementId: "G-3SP083PSH6"
+};
 
-    // Quote/contact form submissions. Visitors can create a lead; nobody
-    // can read, edit, or delete from the client - view them in the
-    // Firebase Console instead (Console access is governed by IAM, not
-    // these rules).
-    match /leads/{leadId} {
-      allow read, update, delete: if false;
-      allow create: if isValidLead(request.resource.data);
-    }
-
-    // Deny everything else by default.
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-
-  function isValidLead(data) {
-    let hasRequiredFields = data.keys().hasAll(['name', 'phone', 'service', 'source', 'createdAt']);
-    let onlyAllowedFields = data.keys().hasOnly(['name', 'phone', 'email', 'service', 'date', 'time', 'message', 'source', 'createdAt']);
-    let validName      = (data.name is string) && (data.name.size() > 0) && (data.name.size() <= 100);
-    let validPhone     = (data.phone is string) && (data.phone.size() > 0) && (data.phone.size() <= 20);
-    let validService   = (data['service'] is string) && (data['service'].size() <= 100);
-    let validSource    = data.source in ['contact-form', 'quote-form'];
-    let validTimestamp = data.createdAt == request.time;
-    let validEmail     = !('email' in data)   || ((data.email is string) && (data.email.size() <= 200));
-    let validDate      = !('date' in data)    || ((data.date is string) && (data.date.size() <= 20));
-    let validTime      = !('time' in data)    || ((data.time is string) && (data.time.size() <= 20));
-    let validMessage   = !('message' in data) || ((data.message is string) && (data.message.size() <= 2000));
-
-    return hasRequiredFields && onlyAllowedFields
-      && validName && validPhone && validService && validSource && validTimestamp
-      && validEmail && validDate && validTime && validMessage;
-  }
-}
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
