@@ -29,7 +29,7 @@ async function submitToFirestore({ name, phone, email, service, date, time, mess
   await addDoc(collection(db, 'leads'), lead);
 }
 
-/** Sheets is required. Only a readable acknowledgement counts as success. */
+/** Optional Sheets copy. Require a readable acknowledgement from Apps Script. */
 async function submitToSheet(form, data) {
   if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(SCRIPT_URL) || SCRIPT_URL.includes('REPLACE_WITH')) {
     throw new Error('Google Sheets submission endpoint is not configured.');
@@ -58,11 +58,17 @@ async function submitToSheet(form, data) {
 }
 
 export async function submitLead(form, data) {
-  await submitToSheet(form, data);
-  // Firebase is an optional backup and must not delay the Sheets acknowledgement.
-  if (isFirebaseConfigured) {
-    void submitToFirestore(data).catch((error) => {
-      console.warn('Firebase backup failed:', error);
+  if (!isFirebaseConfigured) {
+    throw new Error('Firebase submission backend is not configured.');
+  }
+
+  // Only report success after Firestore confirms the lead was saved.
+  await submitToFirestore(data);
+
+  // A slow or unavailable Sheets endpoint must not block the database save.
+  if (SCRIPT_URL) {
+    void submitToSheet(form, data).catch((error) => {
+      console.warn('Google Sheets copy failed; lead saved to Firebase:', error);
     });
   }
 }

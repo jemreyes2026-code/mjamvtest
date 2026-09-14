@@ -1,21 +1,45 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+rules_version = '2';
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCF8J3P9-dOSdemrvEmEvhjl8dum1VI1ZI",
-  authDomain: "mjamvtest.firebaseapp.com",
-  projectId: "mjamvtest",
-  storageBucket: "mjamvtest.firebasestorage.app",
-  messagingSenderId: "1097893844473",
-  appId: "1:1097893844473:web:9c79b0bf67a78b1aea9928",
-  measurementId: "G-3SP083PSH6"
-};
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function boundedString(value, maxLength) {
+      return value is string && value.size() > 0 && value.size() <= maxLength;
+    }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+    function optionalString(data, field, maxLength) {
+      return !(field in data) || boundedString(data[field], maxLength);
+    }
+
+    // Match the payload sent by frontend/src/api/submitLead.js.
+    function isValidLead() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['name', 'phone', 'service', 'source', 'createdAt'])
+        && data.keys().hasOnly([
+          'name', 'phone', 'service', 'source', 'createdAt',
+          'email', 'date', 'time', 'message'
+        ])
+        && boundedString(data.name, 200)
+        && boundedString(data.phone, 50)
+        && (data['service'] in ['Kitchen Exhaust Cleaning', 'Ocular Inspection', 'Minor Repairs'])
+        && (data.source in ['contact-form', 'quote-form'])
+        && (data.createdAt is timestamp)
+        && data.createdAt == request.time
+        && optionalString(data, 'email', 254)
+        && optionalString(data, 'date', 10)
+        && optionalString(data, 'time', 8)
+        && optionalString(data, 'message', 10000);
+    }
+
+    // Visitors can submit leads without signing in, but cannot retrieve
+    // customer details or change existing submissions. Manage leads in
+    // Firebase Console using your project's authorized Google account.
+    match /leads/{leadId} {
+      allow create: if isValidLead();
+      allow read, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
